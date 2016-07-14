@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.rabinfingerprint.fingerprint.RabinFingerprintLongWindowed;
@@ -33,7 +34,7 @@ public class PartitionService {
 	private final InputStream fileStream;
 
 	private static Polynomial polynomial;
-	private static int rabinWindowsCreated = 0;
+	private static AtomicInteger rabinWindowsCreated = new AtomicInteger(0);
 	private RabinFingerprintLongWindowed rabinWindow;
 
 	private RabinFingerprintLongWindowed getRabinWindow() throws InterruptedException {
@@ -43,8 +44,8 @@ public class PartitionService {
 			polynomial = Polynomial.createFromLong(0x23E5CB30495711L);
 		}
 		
-		if (rabinWindowResources.isEmpty() && rabinWindowsCreated < rabinWindowResources.remainingCapacity()) {
-			rabinWindowsCreated++;
+		if (rabinWindowResources.isEmpty() && rabinWindowsCreated.get() < rabinWindowResources.remainingCapacity()) {
+			rabinWindowsCreated.incrementAndGet();
 			
 			return new RabinFingerprintLongWindowed(polynomial, RABINWINDOWSIZE);
 		}
@@ -54,7 +55,6 @@ public class PartitionService {
 	
 	private void releaseRabinWindow() throws InterruptedException {
 		if (this.rabinWindow == null) {
-			System.out.println("Short file or double release!");
 			return;
 		}
 		
@@ -128,8 +128,6 @@ public class PartitionService {
 					//System.err.println(String.format("Fingerprint: %X", this.rabinWindow.getFingerprintLong()));
 					//System.err.println(String.format("GOT A PART BORDER WITH RABIN FINGERPRINT %d", partSize));
 
-					rabinWindow.reset();
-
 					break;
 				}
 
@@ -139,6 +137,7 @@ public class PartitionService {
 			}
 		}
 
+		rabinWindow.reset();
 		Optional<FilePart> result = Optional.of(new FilePart(partStream.toByteArray()));
 
 		partStream.close();

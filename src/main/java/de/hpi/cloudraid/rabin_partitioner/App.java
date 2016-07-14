@@ -2,8 +2,12 @@ package de.hpi.cloudraid.rabin_partitioner;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
+import javax.management.RuntimeErrorException;
+
 
 /**
  * Hello world!
@@ -12,11 +16,11 @@ import java.util.Optional;
 public class App 
 {
 	private static HashMap<String, FilePart> partsMap = new HashMap<String, FilePart>();
-	private static long totalBytes = 0;
-	private static long deduplicatedBytes = 0;
-	private static long deduplicatedBytesWholeFiles = 0;
+	private static AtomicLong totalBytes = new AtomicLong(0);
+	private static AtomicLong deduplicatedBytes = new AtomicLong(0);
+	private static AtomicLong deduplicatedBytesWholeFiles = new AtomicLong(0);
 	private static long start;
-	private static long previousTotalBytes;
+	private static AtomicLong previousTotalBytes = new AtomicLong(0);
 	
     public static void main( String[] args ) throws IOException, InterruptedException
     {
@@ -45,13 +49,13 @@ public class App
     
     private static void printResults() {
     	long took = System.currentTimeMillis() - start;
-    	long deduplicatedRabin = deduplicatedBytes - deduplicatedBytesWholeFiles;
+    	long deduplicatedRabin = deduplicatedBytes.get() - deduplicatedBytesWholeFiles.get();
     	
-    	String Bs = humanReadableByteCount((long) Math.floor(totalBytes / (took / 1000.0)));
+    	String Bs = humanReadableByteCount((long) Math.floor(totalBytes.get() / (took / 1000.0)));
     	
     	System.out.println(String.format("Took %d ms (%s/s)", took, Bs));
-        System.out.println(String.format("Bytes deduplicated: %s of %s (%d percent)", humanReadableByteCount(deduplicatedBytes), humanReadableByteCount(totalBytes), percent(deduplicatedBytes, totalBytes)));
-        System.out.println(String.format("Bytes deduplicated via rabin: %s of %s (%d percent)", humanReadableByteCount(deduplicatedRabin), humanReadableByteCount(totalBytes), percent(deduplicatedRabin, totalBytes)));
+        System.out.println(String.format("Bytes deduplicated: %s of %s (%d percent)", humanReadableByteCount(deduplicatedBytes.get()), humanReadableByteCount(totalBytes.get()), percent(deduplicatedBytes.get(), totalBytes.get())));
+        System.out.println(String.format("Bytes deduplicated via rabin: %s of %s (%d percent)", humanReadableByteCount(deduplicatedRabin), humanReadableByteCount(totalBytes.get()), percent(deduplicatedRabin, totalBytes.get())));
     }
 
     public static String humanReadableByteCount(long bytes) {
@@ -66,51 +70,63 @@ public class App
     	return (int) Math.floor(100.0 * x / y);
     }
     
+    private synchronized static boolean checkDeduplication(FilePart thePart) {
+    	if (partsMap.containsKey(thePart.getHash())) {
+    		return true;
+    	}
+    	
+    	partsMap.put(thePart.getHash(), thePart);
+    	return false;
+    }
+    
 	private static void findDeduplicableParts(File folder) throws IOException, InterruptedException {
 		File[] files = folder.listFiles();
 		
-		for (File file : files) {
+		Arrays.asList(files).parallelStream().forEach((File file) -> {
 			if (file.getName().startsWith(".")) {
-				continue;
+				return;
 			}
 
-			if (file.isDirectory()) {
-				findDeduplicableParts(file);
-			} else {
-				PartitionService partitionService = new PartitionService(file);
-				
-				int deduplicatedFileBytes = 0;
-				int fileBytes = 0;
-				
-				while (true) {
-					Optional<FilePart> nextPart = partitionService.getNextPart();
-							
-					if (!nextPart.isPresent()) {
-						break;
+			try {
+				if (file.isDirectory()) {
+					findDeduplicableParts(file);
+				} else {
+					PartitionService partitionService = new PartitionService(file);
+					
+					int deduplicatedFileBytes = 0;
+					int fileBytes = 0;
+					
+					while (true) {
+						Optional<FilePart> nextPart = partitionService.getNextPart();
+								
+						if (!nextPart.isPresent()) {
+							break;
+						}
+						
+						FilePart thePart = nextPart.get();
+
+						fileBytes += thePart.getLength();
+						
+						if (checkDeduplication(thePart)) {
+							deduplicatedFileBytes += thePart.getLength();
+						}
 					}
 					
-					FilePart thePart = nextPart.get();
-					
-					totalBytes += thePart.getLength();
-					fileBytes += thePart.getLength();
-					
-					if (partsMap.containsKey(thePart.getHash())) {
-						deduplicatedBytes += thePart.getLength();
-						deduplicatedFileBytes += thePart.getLength();
-					} else {
-						partsMap.put(thePart.getHash(), thePart);
+					totalBytes.addAndGet(fileBytes);
+					deduplicatedBytes.addAndGet(deduplicatedFileBytes);
+					if (fileBytes == deduplicatedFileBytes) {
+						deduplicatedBytesWholeFiles.addAndGet(fileBytes);
 					}
 				}
 				
-				if (fileBytes == deduplicatedFileBytes) {
-					deduplicatedBytesWholeFiles += fileBytes;
+				if (totalBytes.get() > previousTotalBytes.get() + 1024 * 1024) {
+					previousTotalBytes.set(totalBytes.get());
+					//printResults();
 				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
 			}
-			
-			if (totalBytes > previousTotalBytes + 1024 * 1024) {
-				previousTotalBytes = totalBytes;
-				printResults();
-			}
-		}
+		});
 	}
 }
