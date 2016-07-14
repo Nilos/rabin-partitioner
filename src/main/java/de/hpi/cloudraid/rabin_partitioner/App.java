@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.management.RuntimeErrorException;
 
 
 /**
@@ -21,6 +20,7 @@ public class App
 	private static AtomicLong deduplicatedBytesWholeFiles = new AtomicLong(0);
 	private static long start;
 	private static AtomicLong previousTotalBytes = new AtomicLong(0);
+	private static AtomicLong totalPartsCount = new AtomicLong(0);
 	
     public static void main( String[] args ) throws IOException, InterruptedException
     {
@@ -56,6 +56,7 @@ public class App
     	System.out.println(String.format("Took %d ms (%s/s)", took, Bs));
         System.out.println(String.format("Bytes deduplicated: %s of %s (%d percent)", humanReadableByteCount(deduplicatedBytes.get()), humanReadableByteCount(totalBytes.get()), percent(deduplicatedBytes.get(), totalBytes.get())));
         System.out.println(String.format("Bytes deduplicated via rabin: %s of %s (%d percent)", humanReadableByteCount(deduplicatedRabin), humanReadableByteCount(totalBytes.get()), percent(deduplicatedRabin, totalBytes.get())));
+        System.out.println(String.format("Average part size: %s", humanReadableByteCount((int) Math.floor(totalBytes.get() / totalPartsCount.get()))));
     }
 
     public static String humanReadableByteCount(long bytes) {
@@ -95,6 +96,7 @@ public class App
 					
 					int deduplicatedFileBytes = 0;
 					int fileBytes = 0;
+					int partsCount = 0;
 					
 					while (true) {
 						Optional<FilePart> nextPart = partitionService.getNextPart();
@@ -110,8 +112,11 @@ public class App
 						if (checkDeduplication(thePart)) {
 							deduplicatedFileBytes += thePart.getLength();
 						}
+						
+						partsCount++;
 					}
 					
+					totalPartsCount.addAndGet(partsCount);
 					totalBytes.addAndGet(fileBytes);
 					deduplicatedBytes.addAndGet(deduplicatedFileBytes);
 					if (fileBytes == deduplicatedFileBytes) {

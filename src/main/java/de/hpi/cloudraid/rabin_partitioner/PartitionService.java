@@ -60,6 +60,11 @@ public class PartitionService {
 		
 		RabinFingerprintLongWindowed rabinWindow = this.rabinWindow;
 		this.rabinWindow = null;
+		
+		if (rabinWindowResources.remainingCapacity() == 0) {
+			throw new RuntimeException("Could not release rabin window!");
+		}
+		
 		rabinWindowResources.put(rabinWindow);
 	}
 	
