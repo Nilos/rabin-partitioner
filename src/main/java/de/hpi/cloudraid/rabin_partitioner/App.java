@@ -39,6 +39,8 @@ public class App
         findDeduplicableParts(folder);
 
         printResults();
+        
+        System.out.println("Done scanning directory!");
     }
     
     private static void printResults() {
