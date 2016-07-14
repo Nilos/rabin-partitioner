@@ -6,9 +6,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.rabinfingerprint.fingerprint.RabinFingerprintLongWindowed;
@@ -26,18 +27,50 @@ public class PartitionService {
 	// average size of 8KB ( + MinSize + windowSize)
 	private static final long FINGERPRINTBITMASK = 0x1FFFL;
 
+	private static BlockingQueue<RabinFingerprintLongWindowed> rabinWindowResources = new ArrayBlockingQueue<RabinFingerprintLongWindowed>(4);
+	
 	private final File file;
 	private final InputStream fileStream;
+
+	private static Polynomial polynomial;
+	private static int rabinWindowsCreated = 0;
 	private RabinFingerprintLongWindowed rabinWindow;
 
+	private RabinFingerprintLongWindowed getRabinWindow() throws InterruptedException {
+		if (polynomial == null) {
+			// Create new random irreducible polynomial
+			// These can also be created from Longs or hex Strings
+			polynomial = Polynomial.createFromLong(0x23E5CB30495711L);
+		}
+		
+		if (rabinWindowResources.isEmpty() && rabinWindowsCreated < rabinWindowResources.remainingCapacity()) {
+			rabinWindowsCreated++;
+			
+			return new RabinFingerprintLongWindowed(polynomial, RABINWINDOWSIZE);
+		}
+		
+		return rabinWindowResources.take();
+	}
+	
+	private void releaseRabinWindow() throws InterruptedException {
+		if (this.rabinWindow == null) {
+			System.out.println("Short file or double release!");
+			return;
+		}
+		
+		RabinFingerprintLongWindowed rabinWindow = this.rabinWindow;
+		this.rabinWindow = null;
+		rabinWindowResources.put(rabinWindow);
+	}
+	
 	public PartitionService(File file) throws FileNotFoundException {
 		this.file = file;
 
 		this.fileStream = new BufferedInputStream(new FileInputStream(this.file), MAXPARTSIZE * 2);
 	}
 
-	public Optional<FilePart> getNextPart() throws IOException {
-		return this.partitionRabin();
+	public Optional<FilePart> getNextPart() throws IOException, InterruptedException {
+		return this.findRabinWindow(this.fileStream);
 	}
 
 	private byte[] readBytes(InputStream stream, int numberOfBytesMax) throws IOException {
@@ -52,15 +85,12 @@ public class PartitionService {
 		return Arrays.copyOfRange(readBytes, 0, bytesRead);
 	}
 
-	private Optional<FilePart> partitionRabin() throws IOException {
-		return this.findRabinWindow(this.fileStream);
-	}
-
-	private Optional<FilePart> findRabinWindow(InputStream stream) throws IOException {
+	private Optional<FilePart> findRabinWindow(InputStream stream) throws IOException, InterruptedException {
 		int partSize = 0;
 		byte[] startBytes = this.readBytes(stream, MINPARTSIZE);
 
 		if (startBytes.length == 0) {
+			this.releaseRabinWindow();
 			return Optional.empty();
 		}
 
@@ -69,15 +99,11 @@ public class PartitionService {
 		}
 
 		partSize += startBytes.length;
-
-		if (this.rabinWindow == null) {
-			// Create new random irreducible polynomial
-			// These can also be created from Longs or hex Strings
-			Polynomial polynomial = Polynomial.createFromLong(0x23E5CB30495711L);
-
+		
+		if (rabinWindow == null) {
 			// Create a windowed fingerprint object with a window size of 48
 			// bytes.
-			this.rabinWindow = new RabinFingerprintLongWindowed(polynomial, RABINWINDOWSIZE);
+			rabinWindow = getRabinWindow();
 		}
 
 		rabinWindow.pushBytes(startBytes, startBytes.length - RABINWINDOWSIZE - 1, RABINWINDOWSIZE);
@@ -93,10 +119,10 @@ public class PartitionService {
 			if (numberOfBytesRead > 0) {
 				partSize += numberOfBytesRead;
 
-				this.rabinWindow.pushByte(readByte[0]);
+				rabinWindow.pushByte(readByte[0]);
 				partStream.write(readByte);
 
-				long calculatedFingerPrint = this.rabinWindow.getFingerprintLong() & FINGERPRINTBITMASK;
+				long calculatedFingerPrint = rabinWindow.getFingerprintLong() & FINGERPRINTBITMASK;
 
 				if (calculatedFingerPrint == 0L) {
 					//System.err.println(String.format("Fingerprint: %X", this.rabinWindow.getFingerprintLong()));

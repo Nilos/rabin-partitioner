@@ -18,7 +18,7 @@ public class App
 	private static long start;
 	private static long previousTotalBytes;
 	
-    public static void main( String[] args ) throws IOException
+    public static void main( String[] args ) throws IOException, InterruptedException
     {
     	//read all files in the current dir and rabin fingerprint partition them into a hashmap (we do not need the content, only the hash and length)
     	//find out how many of those parts can be deduplicated - print out that number
@@ -66,7 +66,7 @@ public class App
     	return (int) Math.floor(100.0 * x / y);
     }
     
-	private static void findDeduplicableParts(File folder) throws IOException {
+	private static void findDeduplicableParts(File folder) throws IOException, InterruptedException {
 		File[] files = folder.listFiles();
 		
 		for (File file : files) {
