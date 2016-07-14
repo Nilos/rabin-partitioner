@@ -45,13 +45,21 @@ public class App
     	long took = System.currentTimeMillis() - start;
     	long deduplicatedRabin = deduplicatedBytes - deduplicatedBytesWholeFiles;
     	
-    	double MBs = (totalBytes / 1024.0 / 1024.0) / (took / 1000.0);
+    	String Bs = humanReadableByteCount((long) Math.floor(totalBytes / (took / 1000.0)));
     	
-    	System.out.println(String.format("Took %d ms (%f MB/s)", took, MBs));
-        System.out.println(String.format("Bytes deduplicated: %d of %d (%d percent)", deduplicatedBytes, totalBytes, percent(deduplicatedBytes, totalBytes)));
-        System.out.println(String.format("Bytes deduplicated via rabin: %d of %d (%d percent)", deduplicatedRabin, totalBytes, percent(deduplicatedRabin, totalBytes)));
+    	System.out.println(String.format("Took %d ms (%s/s)", took, Bs));
+        System.out.println(String.format("Bytes deduplicated: %s of %s (%d percent)", humanReadableByteCount(deduplicatedBytes), humanReadableByteCount(totalBytes), percent(deduplicatedBytes, totalBytes)));
+        System.out.println(String.format("Bytes deduplicated via rabin: %s of %s (%d percent)", humanReadableByteCount(deduplicatedRabin), humanReadableByteCount(totalBytes), percent(deduplicatedRabin, totalBytes)));
     }
 
+    public static String humanReadableByteCount(long bytes) {
+        int unit = 1024;
+        if (bytes < unit) return bytes + "B";
+        int exp = (int) (Math.log(bytes) / Math.log(unit));
+        char pre = "KMGTPE".charAt(exp-1);
+        return String.format("%.1f%sB", bytes / Math.pow(unit, exp), pre);
+    }
+    
     private static int percent(long x, long y) {
     	return (int) Math.floor(100.0 * x / y);
     }
