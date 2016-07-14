@@ -119,7 +119,7 @@ public class App
 					}
 				}
 				
-				if (totalBytes.get() > previousTotalBytes.get() + 1024 * 1024) {
+				if (totalBytes.get() > previousTotalBytes.get() + 100 * 1024 * 1024) {
 					previousTotalBytes.set(totalBytes.get());
 					//printResults();
 				}
