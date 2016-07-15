@@ -10,17 +10,15 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.rabinfingerprint.fingerprint.RabinFingerprintLongWindowed;
-import org.rabinfingerprint.polynomial.Polynomial;
 
 import de.hpi.cloudraid.rabin_partitioner.FilePart;
 
 public class PartitionService {
 
-	private static final int RABINWINDOWSIZE = 48;
+	public static final int RABINWINDOWSIZE = 48;
 
 	private static final int MINPARTSIZE = 1 * 1024;
 	private static final int MAXPARTSIZE = 64 * 1024;
@@ -33,23 +31,15 @@ public class PartitionService {
 	private final File file;
 	private final InputStream fileStream;
 
-	private static Polynomial polynomial;
-	private static AtomicInteger rabinWindowsCreated = new AtomicInteger(0);
 	private RabinFingerprintLongWindowed rabinWindow;
 
+	public static void generateRabinWindows() {
+		RabinWindowGenerator myRunnable = new RabinWindowGenerator(rabinWindowResources);
+        Thread t = new Thread(myRunnable);
+        t.start();
+	}
+	
 	private RabinFingerprintLongWindowed getRabinWindow() throws InterruptedException {
-		if (polynomial == null) {
-			// Create new random irreducible polynomial
-			// These can also be created from Longs or hex Strings
-			polynomial = Polynomial.createFromLong(0x23E5CB30495711L);
-		}
-		
-		if (rabinWindowResources.isEmpty() && rabinWindowsCreated.get() < rabinWindowResources.remainingCapacity()) {
-			rabinWindowsCreated.incrementAndGet();
-			
-			return new RabinFingerprintLongWindowed(polynomial, RABINWINDOWSIZE);
-		}
-		
 		return rabinWindowResources.take();
 	}
 	
@@ -106,8 +96,6 @@ public class PartitionService {
 		partSize += startBytes.length;
 		
 		if (rabinWindow == null) {
-			// Create a windowed fingerprint object with a window size of 48
-			// bytes.
 			rabinWindow = getRabinWindow();
 		}
 
@@ -130,8 +118,7 @@ public class PartitionService {
 				long calculatedFingerPrint = rabinWindow.getFingerprintLong() & FINGERPRINTBITMASK;
 
 				if (calculatedFingerPrint == 0L) {
-					//System.err.println(String.format("Fingerprint: %X", this.rabinWindow.getFingerprintLong()));
-					//System.err.println(String.format("GOT A PART BORDER WITH RABIN FINGERPRINT %d", partSize));
+					//System.err.println(String.format("Fingerprint: %X , Part Size: %d", this.rabinWindow.getFingerprintLong(), partSize));
 
 					break;
 				}

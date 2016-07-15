@@ -40,6 +40,7 @@ public class App
         }
         
         start = System.currentTimeMillis();
+        PartitionService.generateRabinWindows();
         findDeduplicableParts(folder);
 
         printResults();
