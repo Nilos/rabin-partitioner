@@ -20,11 +20,11 @@ public class PartitionService {
 
 	public static final int RABINWINDOWSIZE = 48;
 
-	private static final int MINPARTSIZE = 1 * 1024;
+	private int minPartSize = 1 * 1024;
 	private static final int MAXPARTSIZE = 64 * 1024;
 	// 13 lowest bits. Means likelihood of breakpoint is 2^-13 which leads to
 	// average size of 8KB ( + MinSize + windowSize)
-	private static final long FINGERPRINTBITMASK = 0x1FFFL;
+	private long fingerPrintBitMask = 0x1FFFL;
 
 	private static BlockingQueue<RabinFingerprintLongWindowed> rabinWindowResources = new ArrayBlockingQueue<RabinFingerprintLongWindowed>(4);
 	
@@ -60,6 +60,15 @@ public class PartitionService {
 	
 	public PartitionService(File file) throws FileNotFoundException {
 		this.file = file;
+		
+		this.fileStream = new BufferedInputStream(new FileInputStream(this.file), MAXPARTSIZE * 2);
+	}
+	
+	public PartitionService(File file, int minPartSize, long fingerPrintBitMask) throws FileNotFoundException {
+		this.file = file;
+		
+		this.minPartSize = minPartSize;
+		this.fingerPrintBitMask = fingerPrintBitMask;
 
 		this.fileStream = new BufferedInputStream(new FileInputStream(this.file), MAXPARTSIZE * 2);
 	}
@@ -82,14 +91,14 @@ public class PartitionService {
 
 	private Optional<FilePart> findRabinWindow(InputStream stream) throws IOException, InterruptedException {
 		int partSize = 0;
-		byte[] startBytes = this.readBytes(stream, MINPARTSIZE);
+		byte[] startBytes = this.readBytes(stream, minPartSize);
 
 		if (startBytes.length == 0) {
 			this.releaseRabinWindow();
 			return Optional.empty();
 		}
 
-		if (startBytes.length < MINPARTSIZE) {
+		if (startBytes.length < minPartSize) {
 			return Optional.of(new FilePart(startBytes));
 		}
 
@@ -115,7 +124,7 @@ public class PartitionService {
 				rabinWindow.pushByte(readByte[0]);
 				partStream.write(readByte);
 
-				long calculatedFingerPrint = rabinWindow.getFingerprintLong() & FINGERPRINTBITMASK;
+				long calculatedFingerPrint = rabinWindow.getFingerprintLong() & fingerPrintBitMask;
 
 				if (calculatedFingerPrint == 0L) {
 					//System.err.println(String.format("Fingerprint: %X , Part Size: %d", this.rabinWindow.getFingerprintLong(), partSize));
@@ -135,9 +144,5 @@ public class PartitionService {
 		partStream.close();
 
 		return result;
-	}
-
-	public static int getMinPartSize() {
-		return MINPARTSIZE;
 	}
 }
