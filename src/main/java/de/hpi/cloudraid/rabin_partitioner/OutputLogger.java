@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import javax.swing.JOptionPane;
+
 public class OutputLogger {
 	private static File file;
 	private static FileWriter fw;
@@ -37,6 +39,7 @@ public class OutputLogger {
 
 	public static void error(String text) {
 		OutputLogger.log(text);
+		JOptionPane.showMessageDialog(null, "Error: " + text);
 		System.err.println(text);
 	}
 }

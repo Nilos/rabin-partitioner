@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.LinkedList;
 
+import javax.swing.JOptionPane;
+
 
 /**
  * Hello world!
@@ -49,6 +51,8 @@ public class App
     		System.exit(1);
     	}
     	
+    	JOptionPane.showMessageDialog(null, "Click ok to start scanning your directories!");
+    	
     	long start = System.currentTimeMillis();
     	PartitionService.generateRabinWindows();
     	OutputLogger.log(String.format("Calculating Rabin Windows took: %d", System.currentTimeMillis() - start));
@@ -68,5 +72,6 @@ public class App
         OutputLogger.log("Done scanning directories!");
         
         OutputLogger.close();
+        JOptionPane.showMessageDialog(null, "Done scanning directories. Please send the logfile to nils.kenneweg@student.hpi.de!");
     }
 }
