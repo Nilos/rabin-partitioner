@@ -51,7 +51,7 @@ public class App
     		System.exit(1);
     	}
     	
-    	JOptionPane.showMessageDialog(null, "Click ok to start scanning your directories!");
+    	JOptionPane.showMessageDialog(null, "Click ok to start scanning your directories! Please be patient this can take some time!");
     	
     	long start = System.currentTimeMillis();
     	PartitionService.generateRabinWindows();
@@ -72,6 +72,6 @@ public class App
         OutputLogger.log("Done scanning directories!");
         
         OutputLogger.close();
-        JOptionPane.showMessageDialog(null, "Done scanning directories. Please send the logfile to nils.kenneweg@student.hpi.de!");
+        JOptionPane.showMessageDialog(null, "Done scanning directories. Please send the logfile (Desktop/Rabin-Partitioner-Nils-MA.log) to nils.kenneweg@student.hpi.de!");
     }
 }
