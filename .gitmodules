@@ -1,0 +1,3 @@
+[submodule "rabinfingerprint"]
+	path = rabinfingerprint
+	url = https://github.com/themadcreator/rabinfingerprint.git
