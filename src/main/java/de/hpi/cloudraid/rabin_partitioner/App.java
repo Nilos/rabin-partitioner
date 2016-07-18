@@ -21,6 +21,8 @@ public class App
 
     	LinkedList<File> folders = new LinkedList<File>();
     	
+    	OutputLogger.open();
+    	
     	for (String filePath : args) {
             File folder = new File(filePath);
             if (!folder.isDirectory()) {
@@ -64,5 +66,7 @@ public class App
         }); 
         
         OutputLogger.log("Done scanning directories!");
+        
+        OutputLogger.close();
     }
 }
