@@ -47,10 +47,16 @@ public class App
     		System.exit(1);
     	}
     	
+    	long start = System.currentTimeMillis();
+    	PartitionService.generateRabinWindows();
+    	System.out.println(String.format("Calculating Rabin Windows took: %d", System.currentTimeMillis() - start));
+    	
         folders.stream().forEach((File folder) -> {
         	System.out.println("Scanning folder: " + folder.getName());
         	try {
-				new DirectoryPartitioner(folder).run();
+				new DirectoryPartitioner(folder).run(2 * 1024, 0x1FFFL);
+				new DirectoryPartitioner(folder).run(4 * 1024, 0xFFFFL);
+				System.out.println("Done scanning directory: " + folder.getName());
 			} catch (Exception e) {
 				System.out.println("Failed to scan directory: " + folder.getAbsolutePath());
 				e.printStackTrace();

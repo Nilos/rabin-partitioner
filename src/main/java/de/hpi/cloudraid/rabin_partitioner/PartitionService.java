@@ -33,10 +33,11 @@ public class PartitionService {
 
 	private RabinFingerprintLongWindowed rabinWindow;
 
-	public static void generateRabinWindows() {
+	public static void generateRabinWindows() throws InterruptedException {
 		RabinWindowGenerator myRunnable = new RabinWindowGenerator(rabinWindowResources);
         Thread t = new Thread(myRunnable);
         t.start();
+        t.join();
 	}
 	
 	private RabinFingerprintLongWindowed getRabinWindow() throws InterruptedException {

@@ -21,18 +21,16 @@ public class DirectoryPartitioner {
 		this.folder = folder;
 	}
 	
-    public void run() throws IOException, InterruptedException
+    public void run(int minPartSize, long fingerPrintBitMask) throws IOException, InterruptedException
     {
     	//read all files in the current dir and rabin fingerprint partition them into a hashmap (we do not need the content, only the hash and length)
     	//find out how many of those parts can be deduplicated - print out that number
     	//print out a speed (MB/s)
         
         start = System.currentTimeMillis();
-        PartitionService.generateRabinWindows();
-        findDeduplicableParts(this.folder);
+        findDeduplicableParts(this.folder, minPartSize, fingerPrintBitMask);
 
         printResults();
-        System.out.println("Done scanning directory!");
     }
     
     private void printResults() {
@@ -72,7 +70,7 @@ public class DirectoryPartitioner {
     	return false;
     }
     
-	private void findDeduplicableParts(File folder) throws IOException, InterruptedException {
+	private void findDeduplicableParts(File folder, int minPartSize, long fingerPrintBitMask) throws IOException, InterruptedException {
 		File[] files = folder.listFiles();
 		
 		Arrays.asList(files).parallelStream().forEach((File file) -> {
@@ -82,9 +80,9 @@ public class DirectoryPartitioner {
 
 			try {
 				if (file.isDirectory()) {
-					findDeduplicableParts(file);
+					findDeduplicableParts(file, minPartSize, fingerPrintBitMask);
 				} else {
-					PartitionService partitionService = new PartitionService(file);
+					PartitionService partitionService = new PartitionService(file, minPartSize, fingerPrintBitMask);
 					
 					long deduplicatedFileBytes = 0;
 					long fileBytes = 0;
