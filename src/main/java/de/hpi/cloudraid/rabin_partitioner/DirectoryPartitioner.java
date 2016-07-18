@@ -39,11 +39,11 @@ public class DirectoryPartitioner {
     	
     	String Bs = humanReadableByteCount((long) Math.floor(totalBytes.get() / (took / 1000.0)));
     	
-    	System.out.println("Results for directory: " + this.folder.getName());
-    	System.out.println(String.format("Took %d ms (%s/s)", took, Bs));
-        System.out.println(String.format("Bytes deduplicated: %s of %s (%d percent)", humanReadableByteCount(deduplicatedBytes.get()), humanReadableByteCount(totalBytes.get()), percent(deduplicatedBytes.get(), totalBytes.get())));
-        System.out.println(String.format("Bytes deduplicated via rabin: %s of %s (%d percent)", humanReadableByteCount(deduplicatedRabin), humanReadableByteCount(totalBytes.get()), percent(deduplicatedRabin, totalBytes.get())));
-        System.out.println(String.format("Average part size: %s - Number of parts: %d", 
+    	OutputLogger.log("Results for directory: " + this.folder.getName());
+    	OutputLogger.log(String.format("Took %d ms (%s/s)", took, Bs));
+    	OutputLogger.log(String.format("Bytes deduplicated: %s of %s (%d percent)", humanReadableByteCount(deduplicatedBytes.get()), humanReadableByteCount(totalBytes.get()), percent(deduplicatedBytes.get(), totalBytes.get())));
+    	OutputLogger.log(String.format("Bytes deduplicated via rabin: %s of %s (%d percent)", humanReadableByteCount(deduplicatedRabin), humanReadableByteCount(totalBytes.get()), percent(deduplicatedRabin, totalBytes.get())));
+    	OutputLogger.log(String.format("Average part size: %s - Number of parts: %d", 
         	humanReadableByteCount((int) Math.floor(totalBytes.get() / totalPartsCount.get())),
         	totalPartsCount.get()
         ));

@@ -24,7 +24,7 @@ public class App
     	for (String filePath : args) {
             File folder = new File(filePath);
             if (!folder.isDirectory()) {
-        		System.err.println(String.format("%s is not a directory!", filePath));
+            	OutputLogger.error(String.format("%s is not a directory!", filePath));
         		System.exit(1);
             }
             
@@ -43,26 +43,26 @@ public class App
     	}
     	
     	if (folders.size() == 0) {
-    		System.err.println("Need a path to work on!");
+    		OutputLogger.error("Need a path to work on!");
     		System.exit(1);
     	}
     	
     	long start = System.currentTimeMillis();
     	PartitionService.generateRabinWindows();
-    	System.out.println(String.format("Calculating Rabin Windows took: %d", System.currentTimeMillis() - start));
+    	OutputLogger.log(String.format("Calculating Rabin Windows took: %d", System.currentTimeMillis() - start));
     	
         folders.stream().forEach((File folder) -> {
-        	System.out.println("Scanning folder: " + folder.getName());
+        	OutputLogger.log("Scanning folder: " + folder.getName());
         	try {
 				new DirectoryPartitioner(folder).run(2 * 1024, 0x1FFFL);
 				new DirectoryPartitioner(folder).run(4 * 1024, 0xFFFFL);
-				System.out.println("Done scanning directory: " + folder.getName());
+				OutputLogger.log("Done scanning directory: " + folder.getName());
 			} catch (Exception e) {
-				System.out.println("Failed to scan directory: " + folder.getAbsolutePath());
+				OutputLogger.error("Failed to scan directory: " + folder.getAbsolutePath());
 				e.printStackTrace();
 			}
         }); 
         
-        System.out.println("Done scanning directories!");
+        OutputLogger.log("Done scanning directories!");
     }
 }
